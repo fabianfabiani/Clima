@@ -14,7 +14,7 @@ fun ClimaPage() {
 
     ClimaView(
         estado = viewModel.estado,
-        ejecutar = { ciudad -> viewModel.cargarClima(ciudad) }
+        ejecutar = { intencion -> viewModel.ejecutar(intencion) }
     )
 }
 

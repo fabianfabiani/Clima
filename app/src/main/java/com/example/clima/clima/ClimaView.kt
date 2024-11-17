@@ -1,5 +1,6 @@
 package com.example.clima.clima
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -15,42 +16,54 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.istea.appdelclima.repository.modelos.Ciudad
+
 
 @Composable
 fun ClimaView(
-    modifier: Modifier = Modifier,
     estado: ClimaEstado,
-    ejecutar: (String) -> Unit
+    ejecutar: (ClimaIntencion) -> Unit
 ) {
-    var ciudad by remember { mutableStateOf("") }
+    var ciudadInput by remember { mutableStateOf("") }
 
-    Scaffold {
-        Column(modifier = modifier.padding(it)) {
-            when (estado) {
-                is ClimaEstado.Cargando -> Cargando()
-                is ClimaEstado.Error -> Error()
-                is ClimaEstado.Ok -> ClimaView(
-                    ciudad = estado.ciudad,
-                    temperatura = estado.temperatura,
-                    descripcion = estado.descripcion,
-                    st = estado.st
-                )
-                is ClimaEstado.Vacio -> Text(text = "")
-            }
-
-            // Campo de texto para ingresar la ciudad
+    Scaffold { contentPadding ->
+        Column(
+            modifier = Modifier.padding(contentPadding) // Aplica el padding aquí
+        ) {
             TextField(
-                value = ciudad,
-                onValueChange = { ciudad = it },
+                value = ciudadInput,
+                onValueChange = { ciudadInput = it },
                 label = { Text("Ingrese la ciudad") }
             )
 
-            Button(onClick = { ejecutar(ciudad) }) {
-                Text(text = "Refrescar")
+            Button(onClick = { ejecutar(ClimaIntencion.BuscarCiudad(ciudadInput)) }) {
+                Text(text = "Buscar ciudad")
+            }
+
+            when (estado) {
+                is ClimaEstado.Cargando -> Text(text = "Cargando...")
+                is ClimaEstado.Error -> Text(text = "Error: ${estado.mensaje}")
+                is ClimaEstado.CiudadesEncontradas -> {
+                    estado.ciudades.forEach { ciudad ->
+                        Button(onClick = { ejecutar(ClimaIntencion.CargarClima(ciudad)) }) {
+                            Text(text = ciudad.name)
+                        }
+                    }
+                }
+                is ClimaEstado.Ok -> {
+                    Text(text = "Ciudad: ${estado.ciudad}")
+                    Text(text = "Temperatura: ${estado.temperatura}°C")
+                    Text(text = "Descripción: ${estado.descripcion}")
+                    Text(text = "Sensación Térmica: ${estado.st}°C")
+                }
+                ClimaEstado.Vacio -> Text(text = "Ingrese una ciudad para comenzar")
             }
         }
     }
 }
+
+
+
 
 @Composable
 fun Cargando(){

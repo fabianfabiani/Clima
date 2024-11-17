@@ -9,57 +9,63 @@ import androidx.lifecycle.viewModelScope
 //import com.example.clima.repositorio.MockRepositorio
 //import com.example.clima.repositorio.NetworkRepositorio
 import com.example.clima.repositorio.Repositorio
+import com.istea.appdelclima.repository.modelos.Ciudad
 import kotlinx.coroutines.launch
 import java.lang.IllegalArgumentException
 import java.util.concurrent.Executor
 
-//class ClimaViewModel(repositorio: Repositorio) : ViewModel() {
-//    var repositorio = NetworkRepositorio()
-class ClimaViewModel(val repositorio: Repositorio) : ViewModel() {
-    var estado by mutableStateOf<ClimaEstado>(ClimaEstado.Vacio)
 
-    fun cargarClima(ciudad: String) {
+class ClimaViewModel(private val repositorio: Repositorio) : ViewModel() {
+    var estado by mutableStateOf<ClimaEstado>(ClimaEstado.Vacio)
+        private set
+
+    fun ejecutar(intencion: ClimaIntencion) {
+        when (intencion) {
+            is ClimaIntencion.BuscarCiudad -> buscarCiudad(intencion.nombreCiudad)
+            is ClimaIntencion.CargarClima -> cargarClima(intencion.ciudad)
+        }
+    }
+
+    private fun buscarCiudad(nombreCiudad: String) {
         estado = ClimaEstado.Cargando
         viewModelScope.launch {
             try {
-                // Busca la ciudad y obtiene sus coordenadas
-                val ciudades = repositorio.buscarCiudad(ciudad)
-                if (ciudades.isNotEmpty()) {
-                    val ciudadSeleccionada = ciudades.first()
-                    val clima = repositorio.traerClima(
-                        lat = ciudadSeleccionada.lat,
-                        lon = ciudadSeleccionada.lon
-                    )
-
-                    // Actualiza el estado con la información del clima
-                    estado = ClimaEstado.Ok(
-                        ciudad = clima.name,
-                        temperatura = clima.main.temp,
-                        descripcion = clima.weather.first().description,
-                        st = clima.main.feels_like
-                    )
-                } else {
-                    estado = ClimaEstado.Error("Ciudad no encontrada")
-                }
+                val ciudades = repositorio.buscarCiudad(nombreCiudad)
+                // Transforma el estado para incluir las ciudades encontradas
+                estado = ClimaEstado.CiudadesEncontradas(ciudades)
             } catch (exception: Exception) {
-                estado = ClimaEstado.Error(exception.localizedMessage ?: "Hubo un problema técnico")
+                estado = ClimaEstado.Error(exception.localizedMessage ?: "Error al buscar la ciudad")
             }
         }
     }
 
-    class ClimaViewModelFactory(
-        private val repositorio: Repositorio,
-        //private val router: Router,
-    ) : ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST")
+    private fun cargarClima(ciudad: Ciudad) {
+        estado = ClimaEstado.Cargando
+        viewModelScope.launch {
+            try {
+                val clima = repositorio.traerClima(lat = ciudad.lat, lon = ciudad.lon)
+                estado = ClimaEstado.Ok(
+                    ciudad = clima.name,
+                    temperatura = clima.main.temp,
+                    descripcion = clima.weather.first().description,
+                    st = clima.main.feels_like
+                )
+            } catch (exception: Exception) {
+                estado = ClimaEstado.Error(exception.localizedMessage ?: "Error al cargar el clima")
+            }
+        }
+    }
+    class ClimaViewModelFactory(private val repositorio: Repositorio) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(ClimaViewModel::class.java)) {
                 return ClimaViewModel(repositorio) as T
             }
-            throw IllegalArgumentException("Unknown ViewModel class")
+            throw IllegalArgumentException("Clase ViewModel desconocida")
         }
     }
 }
+
+
 
 
 
